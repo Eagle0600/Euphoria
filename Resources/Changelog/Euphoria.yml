@@ -784,3 +784,9 @@ Entries:
         underwear and undershirt with upstream undergarment marking layers.
   id: 96
   time: '2026-02-28T21:33:25.0000000+00:00'
+- author: Mnemotechnician
+  changes:
+    - type: Fix
+      message: Kitsune can now use kitsune emotes.
+  id: 97
+  time: '2026-02-28T21:34:28.0000000+00:00'
