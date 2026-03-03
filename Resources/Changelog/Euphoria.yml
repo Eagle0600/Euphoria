@@ -894,3 +894,9 @@ Entries:
       message: Removed Asakim from the event scheduler.
   id: 110
   time: '2026-03-02T17:28:59.0000000+00:00'
+- author: SHRURUvevo
+  changes:
+    - type: Add
+      message: Added tall straight bunny ears marking
+  id: 111
+  time: '2026-03-03T08:15:29.0000000+00:00'
