@@ -617,7 +617,13 @@
   parent: JobBaseLoadout
   groups:
   - GroupTankHarness
+  - AssistantHead # Floofstation let reporters have drip
+  - PassengerNeck # Floofstation let reporters have drip
+  - PassengerFace # Floofstation let reporters have drip
+  - PassengerGloves # Floofstation let reporters have drip
   - ReporterJumpsuit
+  - PassengerOuterClothing # Floofstation let reporters have drip
+  - PassengerShoes # Floofstation let reporters have drip
   - CommonBackpack
   - Glasses
   - Survival
