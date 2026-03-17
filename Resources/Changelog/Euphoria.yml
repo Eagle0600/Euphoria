@@ -1379,3 +1379,11 @@ Entries:
       message: Added ADT markings prototype files
   id: 168
   time: '2026-03-15T22:59:27.0000000+00:00'
+- author: Dunrab
+  changes:
+    - type: Add
+      message: Logi can now purchase high capacity water tanks.
+    - type: Tweak
+      message: Sinks can now hold 1500u of water, up from 500u.
+  id: 169
+  time: '2026-03-15T09:22:39.0000000+00:00'
