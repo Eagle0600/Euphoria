@@ -1,6 +1,0 @@
-
-- type: stack
-  parent: BaseTileStack
-  id: FloorCarpetMetamorphic
-  name: stack-metamorphic-carpet-tile
-  spawn: FloorCarpetItemMetamorphic
