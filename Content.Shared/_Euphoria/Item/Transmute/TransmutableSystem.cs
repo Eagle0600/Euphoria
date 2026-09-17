@@ -51,7 +51,7 @@ public sealed class TransmutableSystem : EntitySystem
     }
 
     /// <summary>
-    /// Start transmuting a transmutable entity into another entity, respecting delay.
+    /// Start transmuting a transmutable entity into another entity, respecting delay. Plays sound if applicable.
     /// </summary>
     private void StartTransmuteEntity(Entity<TransmutableComponent> transmutable, EntProtoId prototype, EntityUid user)
     {
@@ -116,17 +116,19 @@ public sealed class TransmutableSystem : EntitySystem
     {
         var xForm = Transform(oldEntity);
 
-        var newEntity = Spawn(prototype, xForm.Coordinates);
-
-        Transform(newEntity).LocalRotation = xForm.LocalRotation;
+        EntityUid newEntity;
         if (_container.TryGetContainingContainer(oldEntity, out var container))
         {
             _container.Remove(oldEntity, container);
-            _container.Insert(newEntity, container);
+            newEntity = PredictedSpawnInContainerOrDrop(prototype, container.Owner, container.ID);
+        }
+        else
+        {
+            newEntity = PredictedSpawnAttachedTo(prototype, xForm.Coordinates);
         }
 
-        if (transferMind & _mind.TryGetMind(oldEntity, out var mindId, out _))
-            _mind.ControlMob(mindId, newEntity);
+        if (transferMind && _mind.TryGetMind(oldEntity, out var mindId, out var mindComp))
+            _mind.TransferTo(mindId, newEntity, mind: mindComp);
 
         _entity.PredictedDeleteEntity(oldEntity);
 
