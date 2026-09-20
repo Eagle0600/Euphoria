@@ -1,3 +1,4 @@
+using Content.Shared.Cloning;
 using Robust.Shared.Audio;
 using Robust.Shared.GameStates;
 using Robust.Shared.Prototypes;
@@ -19,10 +20,10 @@ public sealed partial class TransmutableComponent : Component
     public HashSet<EntProtoId> AvailablePrototypes { get; set; } = new();
 
     /// <summary>
-    /// List of components to keep when transmuting
+    /// Prototype ID of the CloningSettingsPrototype that dictates what components the item keeps when transforming into the new item.
     /// </summary>
-    [DataField(customTypeSerializer: typeof(CustomArraySerializer<string, ComponentNameSerializer>))]
-    public string[]? KeepComponents;
+    [DataField]
+    public ProtoId<CloningSettingsPrototype>? CloningSettingsId = null;
 
     /// <summary>
     /// Sound that plays on transmutation

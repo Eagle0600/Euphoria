@@ -2,7 +2,7 @@
 - type: entity
   parent: BaseItem
   id: FloorCarpetItemMetamorphic
-  name: metamorphic carpet
+  name: metamorphic carpet packet
   description: A packet of special carpet that can be given any colour once.
   components:
   - type: Sprite

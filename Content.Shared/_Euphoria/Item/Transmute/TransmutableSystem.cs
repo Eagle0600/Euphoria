@@ -1,35 +1,32 @@
+using Content.Shared.Cloning;
 using Content.Shared.DoAfter;
-using Content.Shared.Hands.EntitySystems;
 using Content.Shared.Interaction;
-using Content.Shared.Inventory;
 using Content.Shared.Mind;
-using Content.Shared.Storage.EntitySystems;
 using Robust.Shared.Audio.Systems;
-using Robust.Shared.Collections;
 using Robust.Shared.Containers;
+using Robust.Shared.Network;
 using Robust.Shared.Prototypes;
 using Robust.Shared.Serialization;
-using Robust.Shared.Serialization.Manager;
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 namespace Content.Shared._Euphoria.Item.Transmute;
 public sealed class TransmutableSystem : EntitySystem
 {
     [Dependency] private readonly SharedAudioSystem _audio = default!;
+    [Dependency] private readonly SharedCloningSystem _cloning = default!;
     [Dependency] private readonly SharedContainerSystem _container = default!;
     [Dependency] private readonly SharedDoAfterSystem _doAfter = default!;
     [Dependency] private readonly EntityManager _entity = default!;
     [Dependency] private readonly SharedInteractionSystem _interaction = default!;
     [Dependency] private readonly SharedMindSystem _mind = default!;
+    [Dependency] private readonly INetManager _net = default!;
     [Dependency] private readonly IPrototypeManager _prototype = default!;
-    [Dependency] private readonly ISerializationManager _serialization = default!;
 
     public override void Initialize()
     {
-        base.Initialize();
         SubscribeLocalEvent<TransmutableComponent, TransmutableDoAfterEvent>(OnDoAfter);
         SubscribeLocalEvent<TransmutableComponent, TransmutableBoundUserInterfaceMessage>(OnBoundUserInterfaceMessage);
     }
@@ -57,9 +54,9 @@ public sealed class TransmutableSystem : EntitySystem
     {
         var comp = transmutable.Comp;
 
-        // Not working for some reason but I can't be assed.
-        if (comp.PlayTransmuteSound)
-            _audio.PlayPredicted(comp.TransmuteSound, transmutable, user);
+        // Would use PlayPredicted but this is only running server side, and that would result in the user not hearing it.
+        if (comp.PlayTransmuteSound && _net.IsServer)
+            _audio.PlayPvs(comp.TransmuteSound, Transform(transmutable).Coordinates);
 
         if (comp.Delay == 0)
         {
@@ -75,8 +72,6 @@ public sealed class TransmutableSystem : EntitySystem
             BreakOnMove = true,
             BreakOnWeightlessMove = false,
             AttemptFrequency = AttemptFrequency.EveryTick,
-            CancelDuplicate = false,
-            BlockDuplicate = false
         };
 
         _doAfter.TryStartDoAfter(doAfterArgs);
@@ -87,36 +82,19 @@ public sealed class TransmutableSystem : EntitySystem
     /// </summary>
     private void TransmuteEntity(Entity<TransmutableComponent> transmutable, EntProtoId prototype)
     {
-        var componentsToKeep = transmutable.Comp.KeepComponents;
-        ValueList<IComponent> keptComponents = new();
-        if (componentsToKeep != null)
-        {
-            keptComponents.EnsureCapacity(componentsToKeep.Length);
-            foreach (var componentName in componentsToKeep)
-            {
-                if (!_entity.ComponentFactory.TryGetRegistration(componentName, out var componentRegistration) ||
-                    !_entity.TryGetComponent(transmutable, componentRegistration, out var component))
-                    continue;
-
-                keptComponents.Add(_serialization.CreateCopy(component, notNullableOverride: true));
-            }
-        }
-
-        var newEntity = ReplaceEntity(transmutable.Owner, prototype);
-
-        foreach (var component in keptComponents) {
-            _entity.AddComponent(newEntity, component, overwrite: true);
-        }
+        TryReplaceEntity(transmutable.Owner, prototype, out _, transmutable.Comp.CloningSettingsId);
     }
 
     /// <summary>
-    /// Replaces an entity with a new entity in place. Keeps the mind attached to the new entity.
+    /// Replaces an entity with a new entity in place. Keeps the mind attached to the new entity. Returns true if the new entity is created.
     /// </summary>
-    private EntityUid ReplaceEntity(EntityUid oldEntity, EntProtoId prototype, bool transferInventory = true, bool transferMind = true)
+    private bool TryReplaceEntity(EntityUid oldEntity, EntProtoId prototype, [NotNullWhen(true)] out EntityUid? newEntity, ProtoId<CloningSettingsPrototype>? cloningSettings = null, bool transferInventory = true, bool transferMind = true)
     {
-        var xForm = Transform(oldEntity);
+        newEntity = null;
 
-        EntityUid newEntity;
+        if (_entity.IsQueuedForDeletion(oldEntity))
+            return false;
+
         if (_container.TryGetContainingContainer(oldEntity, out var container))
         {
             _container.Remove(oldEntity, container);
@@ -124,15 +102,18 @@ public sealed class TransmutableSystem : EntitySystem
         }
         else
         {
-            newEntity = PredictedSpawnAttachedTo(prototype, xForm.Coordinates);
+            newEntity = PredictedSpawnAttachedTo(prototype, Transform(oldEntity).Coordinates);
         }
+
+        if (cloningSettings != null)
+            _cloning.CloneComponents(oldEntity, newEntity.Value, cloningSettings.Value);
 
         if (transferMind && _mind.TryGetMind(oldEntity, out var mindId, out var mindComp))
             _mind.TransferTo(mindId, newEntity, mind: mindComp);
 
         _entity.PredictedDeleteEntity(oldEntity);
 
-        return newEntity;
+        return true;
     }
 }
 
