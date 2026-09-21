@@ -1,6 +1,5 @@
 using Content.Shared.Cloning;
 using Content.Shared.DoAfter;
-using Content.Shared.Interaction;
 using Content.Shared.Mind;
 using Robust.Shared.Audio.Systems;
 using Robust.Shared.Containers;
@@ -20,7 +19,6 @@ public sealed class TransmutableSystem : EntitySystem
     [Dependency] private readonly SharedContainerSystem _container = default!;
     [Dependency] private readonly SharedDoAfterSystem _doAfter = default!;
     [Dependency] private readonly EntityManager _entity = default!;
-    [Dependency] private readonly SharedInteractionSystem _interaction = default!;
     [Dependency] private readonly SharedMindSystem _mind = default!;
     [Dependency] private readonly INetManager _net = default!;
     [Dependency] private readonly IPrototypeManager _prototype = default!;
@@ -38,13 +36,11 @@ public sealed class TransmutableSystem : EntitySystem
 
     private void OnBoundUserInterfaceMessage(Entity<TransmutableComponent> transmutable, ref TransmutableBoundUserInterfaceMessage args)
     {
-        var user = GetEntity(args.User);
         if (!transmutable.Comp.AvailablePrototypes.Contains(args.Prototype.Id) ||
-            !_prototype.HasIndex(args.Prototype) ||
-            !_interaction.InRangeAndAccessible(user, transmutable.Owner))
+            !_prototype.HasIndex(args.Prototype))
             return;
 
-        StartTransmuteEntity(transmutable, args.Prototype, user);
+        StartTransmuteEntity(transmutable, args.Prototype, GetEntity(args.User));
     }
 
     /// <summary>
