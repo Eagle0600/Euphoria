@@ -6067,3 +6067,9 @@ Entries:
       message: Den Mantis Drip
   id: 758
   time: '2026-09-25T03:58:00.0000000+00:00'
+- author: Mnemotechnician
+  changes:
+    - type: Tweak
+      message: Uncooked buns now take less time to craft (5s -> 0.5s)
+  id: 759
+  time: '2026-09-25T13:47:20.0000000+00:00'
