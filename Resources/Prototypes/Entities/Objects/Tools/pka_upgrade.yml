@@ -30,14 +30,19 @@
       color: "#a71010"
     - state: overlay-3
       color: "#eb4c13"
+    # Floofstation - lavaland pka changes start
   - type: GunUpgrade
     tags: [ GunUpgradeDamage ]
     examineText: gun-upgrade-examine-text-damage
   - type: GunUpgradeDamage
-    damage:
-      types:
-        Blunt: 10
-        Structural: 15
+    modifier: 1.25
+  - type: GunUpgradeCost # Euphoria - add costs back
+    cost: 25
+    #damage:
+    #  types:
+    #    Blunt: 10
+    #    Structural: 15
+    # Floofstation - lavaland pka changes end
 
 - type: entity
   id: PKAUpgradeRange
@@ -53,11 +58,17 @@
       color: "#1012a7"
     - state: overlay-3
       color: "#1373eb"
+  # Floofstation - lavaland pka changes start
   - type: GunUpgrade
     tags: [ GunUpgradeRange ]
     examineText: gun-upgrade-examine-text-range
+  #- type: GunUpgradeRange # DeltaV - actually change range not speed
+  #  coefficient: 1.15 # DeltaV - lowered further to account for increased base range
+  - type: GunUpgradeCost # Euphoria - add costs back
+    cost: 20
   - type: GunUpgradeSpeed
     coefficient: 1.5
+  # Floofstation - lavaland pka changes end
 
 - type: entity
   id: PKAUpgradeFireRate
@@ -78,3 +89,5 @@
     examineText: gun-upgrade-examine-text-reload
   - type: GunUpgradeFireRate
     coefficient: 1.5
+  - type: GunUpgradeCost # Euphoria - add costs back
+    cost: 20

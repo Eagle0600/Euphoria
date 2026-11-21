@@ -1,5 +1,6 @@
 using System.Linq;
-using Content.Shared._DV.Weapons.Ranged.Upgrades; // DeltaV
+using Content.Shared._DV.Weapons.Ranged.Upgrades;  // DeltaV
+using Content.Shared.Weapons.Ranged.Upgrades.Components;
 using Content.Shared.Administration.Logs;
 using Content.Shared.Database;
 using Content.Shared.Examine;
@@ -9,7 +10,6 @@ using Content.Shared.Projectiles;
 using Content.Shared.Tag;
 using Content.Shared.Weapons.Ranged.Events;
 using Content.Shared.Weapons.Ranged.Systems;
-using Content.Shared.Weapons.Ranged.Upgrades.Components;
 using Content.Shared.Whitelist;
 using Robust.Shared.Audio.Systems;
 using Robust.Shared.Containers;
@@ -81,11 +81,13 @@ public sealed partial class GunUpgradeSystem : EntitySystem // DeltaV - made par
             return;
 
         // DeltaV - add coutn check to allow having no tags
+        /* Euphoria - We arent going to limit how many of the same upgrade you can slot in a weapon
         if (upgradeComponent.Tags.Count > 0 && GetCurrentUpgradeTags(ent).ToHashSet().IsSupersetOf(upgradeComponent.Tags))
         {
             _popup.PopupPredicted(Loc.GetString("upgradeable-gun-popup-already-present"), ent, args.User);
             return;
         }
+        */
 
         // Begin DeltaV Additions
         var attemptEv = new GunUpgradeAttemptEvent(ent, args.User);
@@ -106,12 +108,12 @@ public sealed partial class GunUpgradeSystem : EntitySystem // DeltaV - made par
         // End DeltaV Additions
     }
 
-    private void OnFireRateRefresh(Entity<GunUpgradeFireRateComponent> ent, ref GunRefreshModifiersEvent args)
+    private void OnFireRateRefresh(Entity<Components.GunUpgradeFireRateComponent> ent, ref GunRefreshModifiersEvent args)
     {
         args.FireRate *= ent.Comp.Coefficient;
     }
 
-    private void OnSpeedRefresh(Entity<GunUpgradeSpeedComponent> ent, ref GunRefreshModifiersEvent args)
+    private void OnSpeedRefresh(Entity<Components.GunUpgradeSpeedComponent> ent, ref GunRefreshModifiersEvent args)
     {
         args.ProjectileSpeed *= ent.Comp.Coefficient;
     }
@@ -120,8 +122,14 @@ public sealed partial class GunUpgradeSystem : EntitySystem // DeltaV - made par
     {
         foreach (var (ammo, _) in args.Ammo)
         {
-            if (TryComp<ProjectileComponent>(ammo, out var proj))
-                proj.Damage += ent.Comp.Damage;
+            // Goobstation - Lavaland PKAs Start
+            if (!TryComp<ProjectileComponent>(ammo, out var projectile))
+                continue;
+            var multiplier = 1f;
+            if (ent.Comp.BonusDamage != null)
+                projectile.Damage += ent.Comp.BonusDamage * multiplier;
+            projectile.Damage *= ent.Comp.Modifier;
+            // Goobstation - Lavaland PKAs Start
         }
     }
 

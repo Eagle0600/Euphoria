@@ -1,4 +1,5 @@
 using Content.Server.Atmos.Components;
+using Content.Shared._Goobstation.Body.Components;
 using Content.Server.Radiation.Components;
 using Content.Shared._DV.CosmicCult.Components;
 using Content.Shared._Floof.Vore;
@@ -16,6 +17,10 @@ using Content.Shared.Verbs;
 using Content.Shared._Floof.Leash;
 using Content.Shared._Floof.Leash.Components;
 using Robust.Shared.Containers;
+using Robust.Shared.Audio.Systems;
+using Robust.Shared.Audio;
+using Robust.Server.Player;
+using Robust.Shared.Configuration;
 namespace Content.Server._Floof.Vore;
 
 public sealed class PreySystem : EntitySystem
@@ -25,7 +30,10 @@ public sealed class PreySystem : EntitySystem
     [Dependency] private readonly SharedPopupSystem _popupSystem = default!;
     [Dependency] private readonly InventorySystem _inventorySystem = default!;
     [Dependency] private readonly LeashSystem _leash = default!;
-    
+    [Dependency] private readonly SharedAudioSystem _audio = default!;
+    [Dependency] private readonly IPlayerManager _playerManager = default!;
+    [Dependency] private readonly INetConfigurationManager _netConfig = default!;
+
     private readonly HashSet<EntityUid> _pendingImmunityUpdates = new();
 
     public override void Initialize()
@@ -33,6 +41,7 @@ public sealed class PreySystem : EntitySystem
         SubscribeLocalEvent<PredComponent, EntInsertedIntoContainerMessage>(OnPreyInsertedIntoContainer);
         SubscribeLocalEvent<PredComponent, EntRemovedFromContainerMessage>(OnPreyRemovedFromContainer);
         
+        SubscribeLocalEvent<DevouredComponent, VoreSettingsChangedEvent>(OnVoreSettingsChanged);
         SubscribeLocalEvent<DevouredComponent, ComponentStartup>(OnStartup);
         SubscribeLocalEvent<DevouredComponent, GetVerbsEvent<Verb>>(OnGetVerbs);
         SubscribeLocalEvent<DevouredComponent, MobStateChangedEvent>(OnPreyMobStateChanged);
@@ -71,14 +80,45 @@ public sealed class PreySystem : EntitySystem
         }
 
         EnsureComp<DevouredComponent>(prey);
+        if(TryComp<DevouredComponent>(prey, out var devouredComp) 
+            && _playerManager.TryGetSessionByEntity(prey, out var session)
+            && _netConfig.GetClientCVar(session.Channel, VoreCVars.AllowSound))
+            devouredComp.Stream = _audio.PlayEntity(devouredComp.SoundBelly, session, prey, AudioParams.Default.WithLoop(true))?.Entity;
     }
 
     /// <summary>
     /// responsible for removing components and immunities
     /// </summary>
     private void OnPreyRemovedFromContainer(EntityUid uid, PredComponent comp, EntRemovedFromContainerMessage args){
-        if (TryComp<DevouredComponent>(args.Entity, out _))
-            _pendingImmunityUpdates.Add(args.Entity);
+        var prey = args.Entity;
+        if (TryComp<DevouredComponent>(prey, out var devouredComp)){
+            _pendingImmunityUpdates.Add(prey);
+
+            if (devouredComp.Stream != null){
+                _audio.Stop(devouredComp.Stream.Value);
+                devouredComp.Stream = null;
+            }
+        }
+    }
+
+    /// <summary>
+    /// incase the menu has changed to update while being inside someone 
+    /// </summary>
+    private void OnVoreSettingsChanged(EntityUid uid, DevouredComponent comp, VoreSettingsChangedEvent ev){
+        if (!_playerManager.TryGetSessionByEntity(uid, out var session)){
+            return;
+        }
+        var allowSound = _netConfig.GetClientCVar(session.Channel, VoreCVars.AllowSound);
+        if (!allowSound){
+            if (comp.Stream != null){
+                _audio.Stop(comp.Stream.Value);
+                comp.Stream = null;
+            }
+            return;
+        }
+        if (allowSound && comp.Stream == null){
+            comp.Stream = _audio.PlayEntity(comp.SoundBelly, session, uid, AudioParams.Default.WithLoop(true))?.Entity;
+        }
     }
 
     private void OnStartup(EntityUid uid, DevouredComponent comp, ComponentStartup args){
@@ -163,8 +203,14 @@ public sealed class PreySystem : EntitySystem
         should prevent possible exploitation of the system*/
         if (!IsInVoreContainer(prey))
            return;
+
         if (!TryComp<DevouredComponent>(prey, out var tracker))
             return;
+
+        if (!HasComp<SpecialBreathingImmunityComponent>(prey)){
+            EnsureComp<SpecialBreathingImmunityComponent>(prey);
+            tracker.AddedBreathing = true;
+        }
 
         if (!HasComp<PressureImmunityComponent>(prey)){
             EnsureComp<PressureImmunityComponent>(prey);
@@ -205,6 +251,11 @@ public sealed class PreySystem : EntitySystem
             return;
         if (!TryComp<DevouredComponent>(prey, out var tracker))
             return;
+
+        if (tracker.AddedBreathing){
+            RemComp<SpecialBreathingImmunityComponent>(prey);
+            tracker.AddedBreathing = false;
+        }
 
         if (tracker.AddedPressure){
             RemComp<PressureImmunityComponent>(prey);
